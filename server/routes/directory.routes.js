@@ -4,7 +4,6 @@ import {
   createDirectory,
   renameDirectory,
   deleteDirectory,
-  getDirectoryDetails,
   getBreadcrumbPath,
 } from "../controllers/directory.controller.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";

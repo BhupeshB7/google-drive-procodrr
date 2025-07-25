@@ -2,6 +2,7 @@ import Directory from "../models/directory.model.js";
 import File from "../models/file.model.js";
 import { rm } from "fs/promises";
 import Trash from "../models/trash.model.js";
+import redisClient from "../config/redis.js";
 export const getDirectory = async (req, res) => {
   const user = req.user;
   const _id = req.params.id || user.rootDirId.toString();
@@ -53,6 +54,7 @@ export const createDirectory = async (req, res, next) => {
             userId: user._id,
             path: [...(parentDir.path || []), parentDirId]
         });
+        await redisClient.del(`breadcrumb:${user._id}:${parentDirId}`);
 
         return res.status(201).json({
             message: "Directory Created!",
@@ -162,7 +164,11 @@ export const deleteDirectory = async (req, res, next) => {
             _id: { $in: [...directories.map((dir) => dir._id), id] },
         });
         await File.deleteMany({ _id: { $in: files.map((file) => file._id) } });
-
+        await redisClient.del(`breadcrumb:${user._id}:${id}`);  
+ 
+        for (const { _id } of directories) {
+            await redisClient.del(`breadcrumb:${user._id}:${_id}`);
+        }
         return res.status(200).json({ message: "Directory Deleted!" });
     } catch (error) {
         next(error);
@@ -174,29 +180,42 @@ export const getBreadcrumbPath = async (req, res, next) => {
     const user = req.user;
 
     try {
+        const cacheKey = `breadcrumb:${user._id}:${dirId}`;
+        const cached = await redisClient.get(cacheKey);
+
+        if (cached) {
+            return res.status(200).json({ path: JSON.parse(cached), cached: true });
+        }
+
         const directory = await Directory.findOne({
             _id: dirId,
-            userId: user._id
+            userId: user._id,
         }).lean();
 
         if (!directory) {
             return res.status(404).json({ message: "Directory not found!" });
         }
- 
+
         const pathDirs = await Directory.find({
-            _id: { $in: directory.path }
-        }).lean().select('name _id');
- 
-        const sortedPath = directory.path.map(pathId =>
-            pathDirs.find(dir => dir._id.toString() === pathId.toString())
+            _id: { $in: directory.path },
+        })
+            .lean()
+            .select("name _id");
+
+        const sortedPath = directory.path.map((pathId) =>
+            pathDirs.find((dir) => dir._id.toString() === pathId.toString())
         );
- 
+
         sortedPath.push({
             _id: directory._id,
-            name: directory.name
+            name: directory.name,
+        });
+ 
+        await redisClient.set(cacheKey, JSON.stringify(sortedPath), {
+            EX: 60 * 60,  
         });
 
-        return res.status(200).json({ path: sortedPath });
+        return res.status(200).json({ path: sortedPath, cached: false });
     } catch (error) {
         next(error);
     }
