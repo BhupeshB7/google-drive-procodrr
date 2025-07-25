@@ -168,8 +168,7 @@ export const deleteDirectory = async (req, res, next) => {
         next(error);
     }
 };
-
-// New function to get breadcrumb path
+ // get breadcrumb path
 export const getBreadcrumbPath = async (req, res, next) => {
     const { dirId } = req.params;
     const user = req.user;
@@ -183,18 +182,15 @@ export const getBreadcrumbPath = async (req, res, next) => {
         if (!directory) {
             return res.status(404).json({ message: "Directory not found!" });
         }
-
-        // Get all directories in path
+ 
         const pathDirs = await Directory.find({
             _id: { $in: directory.path }
         }).lean().select('name _id');
-
-        // Sort by path order
+ 
         const sortedPath = directory.path.map(pathId =>
             pathDirs.find(dir => dir._id.toString() === pathId.toString())
         );
-
-        // Add current directory
+ 
         sortedPath.push({
             _id: directory._id,
             name: directory.name
@@ -206,48 +202,3 @@ export const getBreadcrumbPath = async (req, res, next) => {
     }
 };
 
-export const getDirectoryDetails = async (req, res, next) => {
-  const { id } = req.params;
-  const user = req.user;
-  try {
-    const isDirExists = await Directory.findOne({
-      _id: id,
-      userId: user._id,
-    }).lean();
-    if (!isDirExists) {
-      return res.status(404).json({ message: "Directory not found!" });
-    }
-    async function getDirectoryContents(dirId) {
-      let directories = await Directory.find({ parentDirId: dirId })
-        .lean()
-        .select("_id name createdAt updatedAt");
-      let files = await File.find({ parentDirId: dirId })
-        .lean()
-        .select("_id name size extension");
-      for (const { _id } of directories) {
-        const { files: childFiles, directories: childDirectories } =
-          await getDirectoryContents(_id);
-        files = files.concat(childFiles);
-        directories = directories.concat(childDirectories);
-      }
-      return { directories, files };
-    }
-    const { directories, files } = await getDirectoryContents(id);
-      const folderDetails = {
-          _id: isDirExists._id,
-          name: isDirExists.name,
-          createdAt: isDirExists.createdAt, 
-          owner: req?.user?.name,
-          totalItems: directories.length + files.length,
-          totalSubfolders: directories.length,
-          totalFiles: files.length,
-          totalSize: files.reduce((acc, file) => acc + file.size, 0),
-      } 
-    return res.status(200).json({
-      message: "Directory Details Fetched!",
-      folderDetails 
-    });
-  } catch (error) {
-    next(error);
-  }
-};
