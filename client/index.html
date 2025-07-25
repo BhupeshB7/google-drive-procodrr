@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <!-- Meta + SEO + Social Tags -->
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>DriveSphere - Secure Cloud Storage & File Sharing Platform</title>
+    <meta name="description"
+        content="DriveSphere is a professional cloud storage solution offering secure file storage, seamless sharing, and collaborative workspace features." />
+    <meta name="keywords"
+        content="cloud storage, file sharing, secure drive, online storage, file management, collaborative workspace, document storage, backup solution" />
+    <meta name="author" content="DriveSphere" />
+    <meta name="robots" content="index, follow" />
+
+    <!-- Open Graph / Twitter Cards -->
+    <meta property="og:title" content="DriveSphere - Secure Cloud Storage" />
+    <meta property="og:description"
+        content="Professional cloud storage solution with enterprise-grade security, seamless file sharing, and collaboration." />
+    <meta property="og:image" content="/assets/og-image.png" />
+    <meta property="og:url" content="https://drivesphere.com" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@DriveSphere" />
+
+    <!-- Icons + Manifest -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <link rel="canonical" href="https://drivesphere.com/" />
+
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "DriveSphere",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web",
+      "url": "https://drivesphere.com",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "creator": {
+        "@type": "Organization",
+        "name": "DriveSphere"
+      }
+    }
+  </script>
+
+    <!-- Security Headers -->
+    <!-- <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:;" />
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <meta http-equiv="X-Frame-Options" content="SAMEORIGIN" />
+    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
+    <meta name="theme-color" content="#1e40af" /> -->
+</head>
+
+<body>
+    <div id="root"></div>
+
+    <script>
+        (function () {
+            const banner = `
+%c██████╗ ██████╗ ██╗██╗   ██╗███████╗███████╗██████╗ ███████╗███████╗██████╗ 
+██╔══██╗██╔══██╗██║██║   ██║██╔════╝██╔════╝██╔══██╗██╔════╝██╔════╝██╔══██╗
+██████╔╝██████╔╝██║██║   ██║█████╗  █████╗  ██████╔╝█████╗  █████╗  ██████╔╝
+██╔═══╝ ██╔══██╗██║╚██╗ ██╔╝██╔══╝  ██╔══╝  ██╔═══╝ ██╔══╝  ██╔══╝  ██╔══██╗
+██║     ██║  ██║██║ ╚████╔╝ ███████╗███████╗██║     ███████╗███████╗██║  ██║
+╚═╝     ╚═╝  ╚═╝╚═╝  ╚═══╝  ╚══════╝╚══════╝╚═╝     ╚══════╝╚══════╝╚═╝  ╚═╝
+      `;
+
+            const styles = {
+                banner: 'color: #1e40af; font-weight: bold; font-size: 16px;',
+                title: 'color: #0ea5e9; font-size: 27px; font-weight: bold;',
+                warning: 'color: #dc2626; font-size: 21px; font-weight: bold;',
+                info: 'color: #fe4; font-size: 18px;',
+                box: 'color: white; background: #1f2937; font-size: 17px; padding: 10px; border-radius: 6px;',
+                border: 'color: #955; font-size: 17px;'
+            };
+
+            console.log(banner, styles.banner);
+            console.log('%cWelcome to DriveSphere Developer Console', styles.title);
+            console.log('%c────────────────────────────────────────────', styles.border);
+            console.log('%c⚠️ SECURITY ALERT', styles.warning);
+            console.log('%cThis console is for developers only. If someone told you to paste anything here, it’s likely a scam.', styles.info);
+            console.log('%cPasting scripts here can compromise your account and expose personal data.', styles.info);
+            console.log('%cDriveSphere will never ask you to paste code in this console.', styles.info);
+            console.log('%c📩 Report suspicious activity to: security@drivesphere.com', styles.box);
+            console.log('%c────────────────────────────────────────────', styles.border);
+        })();
+    </script>
+
+    <script type="module" src="/src/main.jsx"></script>
+</body>
+
+</html>
