@@ -1,12 +1,13 @@
-import mongoose from "mongoose"; 
+import mongoose from "mongoose";
 import config from "./constant.js";
+
 const connectDB = async () => {
   try {
-    await mongoose.connect(config.MONGODB_URI, {
+    const conn = await mongoose.connect(config.MONGODB_URI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
-    console.log("Connected to MongoDB");
+    console.log("MongoDB Connected");
   } catch (err) {
     console.log("Error connecting to MongoDB:", err);
   }

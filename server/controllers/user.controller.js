@@ -1,15 +1,21 @@
-
-import mongoose, { Types } from "mongoose";
-import userSchema from "../validators/user.zod.js";
-import Directory from "../models/directory.model.js";
-import User from "../models/user.model.js";
-import Session from "../models/session.model.js";
-import { verifyGoogleIdToken } from "../service/googleAuthService.js";
-import { UAParser } from "ua-parser-js";
-import { compareOTP, generateOTP, hashOTP } from "../service/generateOTP.js";
-import OTP from "../models/otp.model.js";
-import { EmailProvider } from "../service/EmailProvider.js";
 import axios from "axios";
+import mongoose, { Types } from "mongoose";
+import { UAParser } from "ua-parser-js";
+import redisClient from "../config/redis.js";
+import Directory from "../models/directory.model.js";
+import File from "../models/file.model.js";
+import OTP from "../models/otp.model.js";
+import Session from "../models/session.model.js";
+import User from "../models/user.model.js";
+import { EmailProvider } from "../service/EmailProvider.js";
+import { compareOTP, generateOTP, hashOTP } from "../service/generateOTP.js";
+import { verifyGoogleIdToken } from "../service/googleAuthService.js";
+import userSchema from "../validators/user.zod.js";
+
+const CACHE_TTL_24H = 86400;
+const USER_PROFILE_CACHE_KEY = (userId) => `user:profile:${userId}`;
+const USER_STORAGE_CACHE_KEY = (userId) => `user:storage:${userId}`;
+const ALL_USERS_CACHE_KEY = "users:all";
 export const registerUser = async (req, res, next) => {
   const session = await mongoose.startSession();
   let transactionStarted = false;
@@ -24,7 +30,7 @@ export const registerUser = async (req, res, next) => {
 
     const user = parsed.data;
     const userEmail = user.email;
-    const otpRecord = await OTP.find({ email: userEmail }).sort({
+    const otpRecord = await OTP.findOne({ email: userEmail }).sort({
       createdAt: -1,
     });
     if (!otpRecord) {
@@ -54,7 +60,7 @@ export const registerUser = async (req, res, next) => {
         parentDirId: null,
         userId: userId,
       },
-      { session }
+      { session },
     );
     await User.insertOne(
       {
@@ -64,7 +70,7 @@ export const registerUser = async (req, res, next) => {
         password: user.password,
         rootDirId,
       },
-      { session }
+      { session },
     );
 
     await session.commitTransaction();
@@ -197,13 +203,22 @@ export const logoutAllDevices = async (req, res, next) => {
 
 export const getUserDetails = async (req, res, next) => {
   try {
+    const userId = req.user._id.toString();
+    const cacheKey = USER_PROFILE_CACHE_KEY(userId);
+
+    const cached = await redisClient.get(cacheKey);
+    if (cached) {
+      return res.status(200).json(JSON.parse(cached));
+    }
+
     const allDeviceLogin = await Session.find({ userId: req.user._id }).lean();
     const allDevices = allDeviceLogin.map((device) => ({
       deviceId: device._id,
       deviceName: device.deviceName,
       deviceType: device.deviceType,
     }));
-    res.status(200).json({
+
+    const response = {
       message: "User details fetched successfully",
       user: {
         name: req.user.name,
@@ -211,7 +226,10 @@ export const getUserDetails = async (req, res, next) => {
         picture: req.user.picture,
         allDevices,
       },
-    });
+    };
+
+    await redisClient.setEx(cacheKey, CACHE_TTL_24H, JSON.stringify(response));
+    res.status(200).json(response);
   } catch (error) {
     next(error);
   }
@@ -226,7 +244,7 @@ export const googleLogin = async (req, res, next) => {
     const decodedToken = await verifyGoogleIdToken(idToken);
 
     const user = await User.findOne({ email: decodedToken.email }).session(
-      dbSession
+      dbSession,
     );
 
     if (!user) {
@@ -239,7 +257,7 @@ export const googleLogin = async (req, res, next) => {
           parentDirId: null,
           userId: userId,
         },
-        { dbSession }
+        { dbSession },
       );
       const userDetails = await User.findOneAndUpdate(
         { email: decodedToken.email },
@@ -252,7 +270,7 @@ export const googleLogin = async (req, res, next) => {
             rootDirId,
           },
         },
-        { upsert: true, new: true, session: dbSession }
+        { upsert: true, new: true, session: dbSession },
       );
       const userSession = await Session.create({ userId: userDetails._id });
       res.cookie("google_drive_session", userSession.id, {
@@ -262,10 +280,10 @@ export const googleLogin = async (req, res, next) => {
         signed: true,
         sameSite: "lax",
       });
+      console.log("userDetails", userDetails);
 
       await dbSession.commitTransaction();
       dbSession.endSession();
-
       return res.status(200).json({
         status: "success",
         message: "Google Login successful",
@@ -285,13 +303,16 @@ export const googleLogin = async (req, res, next) => {
         signed: true,
         sameSite: "lax",
       });
-
+      const userDoc = await User.findById(user._id)
+        .select("isGoogleOrGitHubPasswordSet")
+        .lean();
       await dbSession.commitTransaction();
       dbSession.endSession();
-
+      const isGooglePasswordSet = userDoc?.isGoogleOrGitHubPasswordSet ?? false;
       return res.status(200).json({
         status: "success",
         message: "Google Login successful",
+        data: isGooglePasswordSet,
       });
     }
   } catch (error) {
@@ -300,9 +321,9 @@ export const googleLogin = async (req, res, next) => {
     next(error);
   }
 };
-const GITHUB_CLIENT_ID = "Ov23liP1Xobnnmj9cjm5";
-const GITHUB_CLIENT_SECRET = "774f854428bcfe944a8a2a382f55336d20a3d4c2";
-const GITHUB_REDIRECT_URI = "http://localhost:5173/login";
+const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID;
+const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET;
+const GITHUB_REDIRECT_URI = process.env.GITHUB_REDIRECT_URI;
 export const githubLogin = async (req, res, next) => {
   const dbSession = await mongoose.startSession();
   dbSession.startTransaction();
@@ -320,7 +341,7 @@ export const githubLogin = async (req, res, next) => {
         headers: {
           Accept: "application/json",
         },
-      }
+      },
     );
     const { access_token } = tokenResponse.data;
     const userResponse = await axios.get("https://api.github.com/user", {
@@ -334,7 +355,7 @@ export const githubLogin = async (req, res, next) => {
         headers: {
           Authorization: `token ${access_token}`,
         },
-      }
+      },
     );
 
     const primaryEmail =
@@ -358,7 +379,7 @@ export const githubLogin = async (req, res, next) => {
           parentDirId: null,
           userId: userId,
         },
-        { dbSession }
+        { dbSession },
       );
       const userDetails = await User.findOneAndUpdate(
         { email: primaryEmail },
@@ -371,7 +392,7 @@ export const githubLogin = async (req, res, next) => {
             rootDirId,
           },
         },
-        { upsert: true, new: true, session: dbSession }
+        { upsert: true, new: true, session: dbSession },
       );
       const userSession = await Session.create({ userId: userDetails._id });
       res.cookie("google_drive_session", userSession.id, {
@@ -446,7 +467,7 @@ export const sendOTP = async (req, res, next) => {
       {
         new: true,
         upsert: true,
-      }
+      },
     );
 
     res.status(200).json({
@@ -463,7 +484,7 @@ export const sendOTP = async (req, res, next) => {
         t;
         OTP.findOneAndUpdate(
           { email, otp: hashedOTP },
-          { $set: { emailSent: true } }
+          { $set: { emailSent: true } },
         ).catch((err) => console.error("Error updating OTP status:", err));
       })
       .catch((error) => {
@@ -508,5 +529,77 @@ export const verifyOTP = async (req, res, next) => {
   } catch (error) {
     console.error("Error verifying OTP:", error);
     res.status(500).json({ error: "Failed to verify OTP" });
+  }
+};
+
+export const getAllUsersController = async (req, res, next) => {
+  try {
+    const cacheKey = ALL_USERS_CACHE_KEY;
+
+    const cached = await redisClient.get(cacheKey);
+    if (cached) {
+      return res.status(200).json(JSON.parse(cached));
+    }
+
+    const users = await User.find({})
+      .select("_id name email picture createdAt")
+      .lean();
+
+    const response = {
+      message: "Users retrieved successfully",
+      users,
+    };
+
+    await redisClient.setEx(cacheKey, CACHE_TTL_24H, JSON.stringify(response));
+    res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getStorageUsage = async (req, res, next) => {
+  try {
+    const userId = req.user._id.toString();
+    const cacheKey = USER_STORAGE_CACHE_KEY(userId);
+
+    const cached = await redisClient.get(cacheKey);
+    if (cached) {
+      return res.status(200).json(JSON.parse(cached));
+    }
+
+    const result = await File.aggregate([
+      {
+        $match: {
+          userId: req.user._id,
+          isDeleted: false,
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalSize: { $sum: "$size" },
+        },
+      },
+    ]);
+
+    const usedStorage = result.length > 0 ? result[0].totalSize : 0;
+    const totalLimit = req.user.maxStorageInBytes;
+    const remainingStorage = totalLimit - usedStorage;
+
+    const response = {
+      success: true,
+      message: "Storage usage retrieved successfully",
+      data: {
+        used: usedStorage,
+        limit: totalLimit,
+        remaining: remainingStorage,
+        usedPercentage: ((usedStorage / totalLimit) * 100).toFixed(2),
+      },
+    };
+
+    await redisClient.setEx(cacheKey, CACHE_TTL_24H, JSON.stringify(response));
+    res.status(200).json(response);
+  } catch (error) {
+    next(error);
   }
 };

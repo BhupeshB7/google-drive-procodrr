@@ -32,9 +32,18 @@ const userSchema = new Schema(
       type: Boolean,
       default: false,
     },
+    isGoogleOrGitHubPasswordSet: {
+      type: Boolean,
+      default: false,
+    },
     picture: {
       type: String,
       default: "",
+    },
+    maxStorageInBytes: {
+      type: Number,
+      required: true,
+      default: 1 * 1024 ** 3,
     },
   },
   {

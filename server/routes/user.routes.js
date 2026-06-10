@@ -1,5 +1,7 @@
 import express from "express";
 import {
+  getAllUsersController,
+  getStorageUsage,
   getUserDetails,
   githubLogin,
   googleLogin,
@@ -11,15 +13,16 @@ import {
   verifyOTP,
 } from "../controllers/user.controller.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
-import { authLimiter } from "../rate-limiter/index.js";
 
 const userRouter = express.Router();
 
 userRouter.get("/", (req, res) => {
   res.send("Hello User");
 });
-userRouter.post("/register",authLimiter, registerUser);
-userRouter.post("/login",authLimiter, loginUser);
+userRouter.get("/all", authMiddleware, getAllUsersController);
+userRouter.get("/storage", authMiddleware, getStorageUsage);
+userRouter.post("/register", registerUser);
+userRouter.post("/login", loginUser);
 userRouter.post("/logOut", logOutUser);
 userRouter.post("/logoutAll-device", logoutAllDevices);
 userRouter.get("/profile", authMiddleware, getUserDetails);

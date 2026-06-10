@@ -10,6 +10,10 @@ const trashSchema = new Schema(
       type: String,
       required: true,
     },
+    fileId: {
+      type: Schema.Types.ObjectId,
+      required: true,
+    },
     userId: {
       type: Schema.Types.ObjectId,
       required: true,
@@ -25,7 +29,6 @@ const trashSchema = new Schema(
     createdAt: {
       type: Date,
       default: Date.now,
-      expires: 60 * 60 * 24 * 30,
     },
   },
   {

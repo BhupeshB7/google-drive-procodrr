@@ -32,14 +32,15 @@ const fileSchema = new Schema(
     },
     shareToken: {
       type: String,
-      unique: true,
       default: null,
     },
-    imageKitUrl: {
-      type: String,
+    lastAccessedAt: {
+      type: Date,
+      default: null,
+      index: true,
     },
-    imageKitFileId: {
-      type: String,
+    isUploading: {
+      type: Schema.Types.Boolean,
     },
   },
   {

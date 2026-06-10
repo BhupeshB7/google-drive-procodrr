@@ -2,6 +2,7 @@ import Session from "../models/session.model.js";
 import User from "../models/user.model.js";
 
 export const authMiddleware = async (req, res, next) => {
+  console.log("Auth Middleware Invoked", req.signedCookies);
   const sessionId = req.signedCookies["google_drive_session"];
   if (!sessionId) {
     res.clearCookie("google_drive_session");
